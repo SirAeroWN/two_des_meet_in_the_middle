@@ -1,4 +1,5 @@
 from multiprocessing import Pool
+from functools import partial
 from pyDes import des
 import array
 
@@ -36,13 +37,29 @@ def hex_formating(bs):
     return ''.join([format(b, '02x') for b in bs])
 
 
+def composed_encrypt(plain_text, key):
+    return (encrypt(key, plain_text), key)
+
+
+def convert_string_to_bytes(s):
+    # string needs to be an even number in length
+    if len(s) % 2 != 0:
+        raise ValueError
+    else:
+        ls = [s[i:i + 2] for i in range(0, len(s), 2)]
+        return array.array('B', [int(c, 16) for c in ls]).tostring()
+
+
 def mitm(nkeys, plain_text, cipher_text, pool=None):
     # we'll start off with serial and maybe do multi threaded later
-    table = {}
-    # generate all the encryptions
-    for k in generate_keys(nkeys):
-        c = encrypt(k, plain_text)
-        table[c] = k
+    if pool is None:
+        table = {}
+        # generate all the encryptions
+        for k in generate_keys(nkeys):
+            c = encrypt(k, plain_text)
+            table[c] = k
+    else:
+        table = dict(pool.map(partial(composed_encrypt, plain_text), generate_keys(nkeys)))
 
     # iterate each decryption and quit if we find a match
     for k in generate_keys(nkeys):
@@ -68,9 +85,11 @@ key2 = '\x00\x00\x00\x00\x00\x00\x7f\x7f'
 p = ['89', '50', '4E', '47', '0D', '0A', '1A', '0A']
 ph = array.array('B', [int(c, 16) for c in p]).tostring()
 print('plain text:', ph)
+ph = convert_string_to_bytes(''.join(p))
 cho = ['89', 'A3', 'F4', 'E3', 'A9', '93', '37', 'A4']
 ch = array.array('B', [int(c, 16) for c in cho]).tostring()
 print('cipher text:', ch)
+ch = convert_string_to_bytes(''.join(cho))
 # c = encrypt(key, ph)
 # print(type(c), c)
 # p2 = decrypt(key, c)
