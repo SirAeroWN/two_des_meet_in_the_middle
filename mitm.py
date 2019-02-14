@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 from multiprocessing import Pool
 from functools import partial
 from pyDes import des
