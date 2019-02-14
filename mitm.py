@@ -4,6 +4,10 @@ from pyDes import des
 import array
 
 
+PLAIN_TEXT = '89504E470D0A1A0A'
+CIPHER_TEXT = '89A3F4E3A99337A4'
+
+
 def encrypt(key, plain_text):
     cipher = des(key)
     return cipher.encrypt(plain_text)
@@ -76,38 +80,18 @@ def mitm(nkeys, plain_text, cipher_text, pool=None):
     print('did not find keys')
 
 
-key = '\x00\x00\x00\x00\x00\x00\x00\x0f'
-key2 = '\x00\x00\x00\x00\x00\x00\x7f\x7f'
-# p = 'hello___'
-# ph = ['\\x' + hex(ord(c))[2:] for c in p]
-# print(ph)
-# ph = ''.join(['\\x%02x' % ord(c) for c in p])
-p = ['89', '50', '4E', '47', '0D', '0A', '1A', '0A']
-ph = array.array('B', [int(c, 16) for c in p]).tostring()
+p = PLAIN_TEXT
+cho = CIPHER_TEXT
+
+ph = convert_string_to_bytes(p)
+ch = convert_string_to_bytes(cho)
+
 print('plain text:', ph)
-ph = convert_string_to_bytes(''.join(p))
-cho = ['89', 'A3', 'F4', 'E3', 'A9', '93', '37', 'A4']
-ch = array.array('B', [int(c, 16) for c in cho]).tostring()
 print('cipher text:', ch)
-ch = convert_string_to_bytes(''.join(cho))
-# c = encrypt(key, ph)
-# print(type(c), c)
-# p2 = decrypt(key, c)
-# print(p2 == bytes(ph, 'utf-8'), p2)
 
-# 2des
-# c = two_des_encrypt(key, key2, ph)
-# p2 = two_des_decrypt(key, key2, c)
-# print(c)
-# print(p2 == bytes(ph, 'utf-8'), p2)
-
-# mitm test
-# print('test')
-# c = encrypt(key, ph)
-# ch = two_des_encrypt(key, key2, ph)
-# print(type(ph), type(ch))
-# cd = decrypt(key2, ch)
-# print(c == cd, c, cd)
-print(len(ph), len(ch))
-with Pool() as p:
-    mitm(1015, ph, ch, p)
+if len(ph) != len(ch):
+    print('please provide plain and cipher text with matching lengths')
+    print('the current lenths are:\n\tplain: {}\n\tcipher: {}'.format(len(ph), len(ch)))
+else:
+    with Pool() as p:
+        mitm(1015, ph, ch, p)
