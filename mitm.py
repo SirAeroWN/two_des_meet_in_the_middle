@@ -3,6 +3,7 @@ from multiprocessing import Pool
 from functools import partial
 from pyDes import des
 import array
+# import sys
 
 
 # The texts, these should be hexcode representations of the known plaintext and ciphertext
@@ -32,21 +33,33 @@ def two_des_decrypt(k1, k2, cipher_text):
     return decrypt(k1, decrypt(k2, cipher_text))
 
 
-# generator function for producing the first n keys in the correct format
 def generate_keys(num):
-    for i in range(num):
+    for n in range(num):
         arr = [0] * 8
-        ind = -1
-        for j in range(i // 127):  # pyDes can only handle byte values in range 0-127
-            arr[ind] = 127
-            ind -= 1
-        arr[ind] = i % 127
+        powers = [7, 6, 5, 4, 3, 2, 1, 0]
+        for i, p in enumerate(powers):
+            arr[i] = n // (128 ** p)
+            n = n - (arr[i] * (128 ** p)) if n >= (128 ** p) else n
         yield array.array('B', arr).tostring()
+
+
+def to_byte_string(arr):
+	return array.array('B', arr).tostring()
 
 
 # convert a bytes string into something more human readable
 def hex_formating(bs):
     return ''.join([format(b, '02x') for b in bs])
+
+
+# convert a bytes string into something more human readable
+def int_formating(bs):
+    return [int(b) for b in bs]
+
+
+# convert human readable text into hex pairs
+def string_to_hex(s):
+    return ''.join([format(ord(c), '02x') for c in s])
 
 
 # basically just a helper for multi threading
@@ -86,32 +99,34 @@ def mitm(nkeys, plain_text, cipher_text, pool=None):
     for k in generate_keys(nkeys):
         p = decrypt(k, cipher_text)
         if p in table.keys():
-            k1 = hex_formating(table[p])
-            k2 = hex_formating(k)
+            k1 = int_formating(table[p])
+            k2 = int_formating(k)
             print('found keys: (k1:{}, k2:{})'.format(k1, k2))
             print('apply k2 then k1 to decrypt')
             print('use a tool such as this one (http://des.online-domain-tools.com/) to decrypt the whole file with the keys')
-            return
+            return (k1, k2)
 
     # if here then we didn't find anything
     print('did not find keys')
 
 
-p = PLAIN_TEXT
-cho = CIPHER_TEXT
+if __name__ == '__main__':
+    p = PLAIN_TEXT
+    cho = CIPHER_TEXT
 
-# convert the hex strings we were given to a more pyDes friendly format
-ph = convert_string_to_bytes(p)
-ch = convert_string_to_bytes(cho)
+    # convert the hex strings we were given to a more pyDes friendly format
+    ph = convert_string_to_bytes(p)
+    ch = convert_string_to_bytes(cho)
 
-print('plain text:', ph)
-print('cipher text:', ch)
+    print('plain text:', ph)
+    print('cipher text:', ch)
 
-# make sure our text samples are the same size
-if len(ph) != len(ch):
-    print('please provide plain and cipher text with matching lengths')
-    print('the current lengths are:\n\tplain: {}\n\tcipher: {}'.format(len(ph), len(ch)))
-else:
-    # create a processes pool, will grab all processors by default
-    with Pool() as p:
-        mitm(1015, ph, ch, p)  # 1015 is the max number of keys that pyDes can handle
+    # make sure our text samples are the same size
+    if len(ph) != len(ch):
+        print('please provide plain and cipher text with matching lengths')
+        print('the current lengths are:\n\tplain: {}\n\tcipher: {}'.format(len(ph), len(ch)))
+    else:
+        # create a processes pool, will grab all processors by default
+        with Pool() as p:
+            keys = mitm(127**2, ph, ch, p)
+            print(f"k1:{hex_formating(keys[0])}, k2{hex_formating(keys[1])}")
